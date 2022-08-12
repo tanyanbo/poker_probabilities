@@ -117,7 +117,7 @@ def _compare_singles(h1: Hand, h2: Hand, number: int, skip_list: list[int]) -> i
     for i in range(number):
         if h1_filtered[i] > h2_filtered[i]:
             return 1
-        elif h1.sorted_cards[i] < h2.sorted_cards[i]:
+        elif h1_filtered[i] < h2_filtered[i]:
             return -1
     return 0
 
@@ -154,8 +154,8 @@ def _compare_kicker(h1: Hand, h2: Hand, hand_type: int) -> int:
             elif t1[i] < t2[i]:
                 return -1
             else:
-                remaining1 = [card for card in h1.sorted_cards if card not in t1]
-                remaining2 = [card for card in h2.sorted_cards if card not in t2]
+                remaining1 = [card for card in h1.sorted_cards if card not in t1[:2]]
+                remaining2 = [card for card in h2.sorted_cards if card not in t2[:2]]
                 if remaining1[0] > remaining2[0]:
                     return 1
                 elif remaining1[0] < remaining2[0]:
