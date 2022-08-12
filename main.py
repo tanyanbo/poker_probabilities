@@ -8,8 +8,8 @@ values = {2: [0, 13, 26, 39], 3: [1, 14, 27, 40], 4: [2, 15, 28, 41], 5: [3, 16,
 
 suit = ['d', 'c', 'h', 's']
 
-h1 = [1, 2]
-h2 = [12, 25]
+h1 = [6, 35]
+h2 = [38, 51]
 filtered = list(filter(lambda x: x not in h1 and x not in h2, range(52)))
 
 
@@ -17,9 +17,9 @@ def get_probability():
     hand1_count = 0
     hand2_count = 0
     tie_count = 0
-    for x in combinations(filtered, 5):
-        hand1 = Hand(list(x) + h1)
-        hand2 = Hand(list(x) + h2)
+    for community_cards in combinations(filtered, 5):
+        hand1 = Hand(list(community_cards) + h1)
+        hand2 = Hand(list(community_cards) + h2)
         res = compare(hand1, hand2)
         if res == 1:
             hand1_count += 1
@@ -27,11 +27,12 @@ def get_probability():
             hand2_count += 1
         else:
             tie_count += 1
-        if hand2_count % 10000 == 0:
-            print(hand2_count + hand1_count + tie_count)
+        # if hand2_count % 10000 == 0:
+        #     print(hand2_count + hand1_count + tie_count)
 
     total = hand1_count + hand2_count + tie_count
     return {'p1': hand1_count / total, 'p2': hand2_count / total,
             'tie': tie_count / total}
 
-# print(f'Probability: {get_probability()}')
+
+print(f'Probability: {get_probability()}')

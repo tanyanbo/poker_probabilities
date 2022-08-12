@@ -11,6 +11,7 @@ class Hand:
         self.sorted_cards.sort(reverse=True)
         self.count = Counter(self.sorted_cards)
         self.three_most_common = self.count.most_common(3)
+        self.suit_count = Counter([math.floor(card / 13) for card in self.cards])
 
     def _is_four_of_a_kind(self):
         return self.three_most_common[0][1] == 4
@@ -19,11 +20,7 @@ class Hand:
         return self.three_most_common[0][1] == 3 and self.three_most_common[1][1] >= 2
 
     def _is_flush(self) -> bool:
-        count = Counter([math.floor(card / 13) for card in self.cards])
-        for _, value in count.items():
-            if value >= 5:
-                return True
-        return False
+        return self.suit_count.most_common(1)[0][1] >= 5
 
     def _is_straight(self) -> bool:
         count = 1
@@ -69,26 +66,22 @@ class Hand:
         return filtered_cards[:5]
 
     def get_straight_flush_highest_card(self):
-        count = Counter([math.floor(card / 13) for card in self.cards])
-        suit = count.most_common(1)[0][0]
+        suit = self.suit_count.most_common(1)[0][0]
         filtered_cards = list(filter(lambda card: math.floor(card / 13) == suit,
                                      self.cards))
+        for i in range(len(filtered_cards)):
+            filtered_cards[i] %= 13
         filtered_cards.sort()
         for i in range(1, len(filtered_cards)):
             if filtered_cards[i] - filtered_cards[i - 1] > 1 and i >= 3:
                 return filtered_cards[i - 1]
         return filtered_cards[-1]
 
-    def get_full_house_kicker(self):
-        if self.three_most_common[2][1] == 1:
-            return self.three_most_common[1][0]
-        return max(self.three_most_common[1][0], self.three_most_common[2][0])
-
     def get_type(self):
         is_straight = self._is_straight()
         is_flush = self._is_flush()
         if is_straight and is_flush:
-            if self._contains_range(8, 12):
+            if self.get_straight_flush_highest_card() == 12:
                 return STRENGTH.ROYAL_FLUSH
             else:
                 return STRENGTH.STRAIGHT_FLUSH
@@ -188,8 +181,10 @@ def _compare_kicker(h1: Hand, h2: Hand, hand_type: int) -> int:
         elif t1[0] < t2[0]:
             return -1
         else:
-            remaining1 = [pair[0] for pair in h1.three_most_common if pair[1] >= 2]
-            remaining2 = [pair[0] for pair in h2.three_most_common if pair[1] >= 2]
+            remaining1 = [pair[0] for pair in h1.three_most_common if
+                          pair[1] >= 2 and pair[0] != t1[0]]
+            remaining2 = [pair[0] for pair in h2.three_most_common if
+                          pair[1] >= 2 and pair[0] != t2[0]]
             remaining1.sort(reverse=True)
             remaining2.sort(reverse=True)
             if remaining1[0] > remaining2[0]:
