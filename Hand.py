@@ -59,14 +59,14 @@ class Hand:
         count = Counter([math.floor(card / 13) for card in self.cards])
         suit = count.most_common(1)[0][0]
         filtered_cards = list(filter(lambda card: math.floor(card / 13) == suit,
-                                     self.sorted_cards))
+                                     self.cards))
         return filtered_cards[:5]
 
     def get_straight_flush_highest_card(self):
         count = Counter([math.floor(card / 13) for card in self.cards])
         suit = count.most_common(1)[0][0]
         filtered_cards = list(filter(lambda card: math.floor(card / 13) == suit,
-                                     self.sorted_cards))
+                                     self.cards))
         reverse_filtered_cards = filtered_cards[::-1]
         for i in range(1, len(reverse_filtered_cards)):
             if reverse_filtered_cards[i] - reverse_filtered_cards[i - 1] > 1 and i >= 3:
@@ -168,9 +168,7 @@ def _compare_kicker(h1: Hand, h2: Hand, hand_type: int) -> int:
         return 0 if c1 == c2 else (1 if c1 > c2 else -1)
 
 
-def compare(c1: list[int], c2: list[int]) -> int:
-    h1 = Hand(c1)
-    h2 = Hand(c2)
+def compare(h1: Hand, h2: Hand) -> int:
     h1_type = h1.get_type()
     h2_type = h2.get_type()
     if h1_type > h2_type:
