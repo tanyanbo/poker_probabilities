@@ -9,14 +9,14 @@ class Hand:
         self.cards = cards
         self.sorted_cards = [card % 13 for card in self.cards]
         self.sorted_cards.sort(reverse=True)
-        self.count = Counter([card % 13 for card in self.cards])
+        self.count = Counter(self.sorted_cards)
+        self.three_most_common = self.count.most_common(3)
 
     def _is_four_of_a_kind(self):
-        return self.count.most_common(1)[0][1] == 4
+        return self.three_most_common[0][1] == 4
 
     def _is_full_house(self):
-        two_most_common = self.count.most_common(2)
-        return two_most_common[0][1] == 3 and two_most_common[1][1] == 2
+        return self.three_most_common[0][1] == 3 and self.three_most_common[1][1] >= 2
 
     def _is_flush(self) -> bool:
         count = Counter([math.floor(card / 13) for card in self.cards])
@@ -30,6 +30,8 @@ class Hand:
         for i in range(1, 7):
             if self.sorted_cards[i - 1] - self.sorted_cards[i] > 1:
                 count = 1
+                if i >= 3:
+                    return 12 in self.sorted_cards and self._contains_range(0, 3)
             elif self.sorted_cards[i - 1] - self.sorted_cards[i] == 1:
                 count += 1
             if count == 5:
@@ -37,10 +39,13 @@ class Hand:
         return 12 in self.sorted_cards and self._contains_range(0, 3)
 
     def _is_trips(self):
-        return self.count.most_common(1)[0][1] == 3
+        return self.three_most_common[0][1] == 3
+
+    def _is_two_pair(self):
+        return self.three_most_common[0][1] == 2 and self.three_most_common[1][1] == 2
 
     def _is_pair(self):
-        return self.count.most_common(1)[0][1] == 2
+        return self.three_most_common[0][1] == 2
 
     def _contains_range(self, start: int, end: int) -> bool:
         for i in range(start, end + 1):
@@ -60,6 +65,7 @@ class Hand:
         suit = count.most_common(1)[0][0]
         filtered_cards = list(filter(lambda card: math.floor(card / 13) == suit,
                                      self.cards))
+        filtered_cards.sort(reverse=True)
         return filtered_cards[:5]
 
     def get_straight_flush_highest_card(self):
@@ -67,17 +73,16 @@ class Hand:
         suit = count.most_common(1)[0][0]
         filtered_cards = list(filter(lambda card: math.floor(card / 13) == suit,
                                      self.cards))
-        reverse_filtered_cards = filtered_cards[::-1]
-        for i in range(1, len(reverse_filtered_cards)):
-            if reverse_filtered_cards[i] - reverse_filtered_cards[i - 1] > 1 and i >= 3:
-                return reverse_filtered_cards[i - 1]
-        return reverse_filtered_cards[-1]
+        filtered_cards.sort()
+        for i in range(1, len(filtered_cards)):
+            if filtered_cards[i] - filtered_cards[i - 1] > 1 and i >= 3:
+                return filtered_cards[i - 1]
+        return filtered_cards[-1]
 
     def get_full_house_kicker(self):
-        three_most_common = self.count.most_common(3)
-        if three_most_common[2][1] == 1:
-            return three_most_common[1][0]
-        return max(three_most_common[1][0], three_most_common[2][0])
+        if self.three_most_common[2][1] == 1:
+            return self.three_most_common[1][0]
+        return max(self.three_most_common[1][0], self.three_most_common[2][0])
 
     def get_type(self):
         is_straight = self._is_straight()
@@ -97,6 +102,8 @@ class Hand:
             return STRENGTH.STRAIGHT
         elif self._is_trips():
             return STRENGTH.TRIPS
+        elif self._is_two_pair():
+            return STRENGTH.TWO_PAIR
         elif self._is_pair():
             return STRENGTH.PAIR
         else:
@@ -116,8 +123,8 @@ def _compare_singles(h1: Hand, h2: Hand, number: int, skip_list: list[int]) -> i
 
 
 def _compare_multiples(h1: Hand, h2: Hand, number: int = 0) -> int | list[int]:
-    value1 = h1.count.most_common(1)[number][0]
-    value2 = h2.count.most_common(1)[number][0]
+    value1 = h1.three_most_common[number][0]
+    value2 = h2.three_most_common[number][0]
     if value1 > value2:
         return 1
     elif value1 < value2:
@@ -136,6 +143,25 @@ def _compare_kicker(h1: Hand, h2: Hand, hand_type: int) -> int:
     elif hand_type == STRENGTH.PAIR:
         res = _compare_multiples(h1, h2)
         return res if type(res) is int else _compare_singles(h1, h2, 3, [res[1]])
+    elif hand_type == STRENGTH.TWO_PAIR:
+        t1 = [pair[0] for pair in h1.three_most_common if pair[1] == 2]
+        t2 = [pair[0] for pair in h2.three_most_common if pair[1] == 2]
+        t1.sort(reverse=True)
+        t2.sort(reverse=True)
+        for i in range(2):
+            if t1[i] > t2[i]:
+                return 1
+            elif t1[i] < t2[i]:
+                return -1
+            else:
+                remaining1 = [card for card in h1.sorted_cards if card not in t1]
+                remaining2 = [card for card in h2.sorted_cards if card not in t2]
+                if remaining1[0] > remaining2[0]:
+                    return 1
+                elif remaining1[0] < remaining2[0]:
+                    return -1
+                else:
+                    return 0
     elif hand_type == STRENGTH.TRIPS:
         res = _compare_multiples(h1, h2)
         return res if type(res) is int else _compare_singles(h1, h2, 2, [res[1]])
@@ -153,12 +179,25 @@ def _compare_kicker(h1: Hand, h2: Hand, hand_type: int) -> int:
                 return -1
         return 0
     elif hand_type == STRENGTH.FULL_HOUSE:
-        res = _compare_multiples(h1, h2)
-        if type(res) is int:
-            return res
-        c1 = h1.get_full_house_kicker()
-        c2 = h2.get_full_house_kicker()
-        return 0 if c1 == c2 else (1 if c1 > c2 else -1)
+        t1 = [pair[0] for pair in h1.three_most_common if pair[1] == 3]
+        t2 = [pair[0] for pair in h2.three_most_common if pair[1] == 3]
+        t1.sort(reverse=True)
+        t2.sort(reverse=True)
+        if t1[0] > t2[0]:
+            return 1
+        elif t1[0] < t2[0]:
+            return -1
+        else:
+            remaining1 = [pair[0] for pair in h1.three_most_common if pair[1] >= 2]
+            remaining2 = [pair[0] for pair in h2.three_most_common if pair[1] >= 2]
+            remaining1.sort(reverse=True)
+            remaining2.sort(reverse=True)
+            if remaining1[0] > remaining2[0]:
+                return 1
+            elif remaining1[0] < remaining2[0]:
+                return -1
+            else:
+                return 0
     elif hand_type == STRENGTH.FOUR_OF_A_KIND:
         res = _compare_multiples(h1, h2)
         return res if type(res) is int else _compare_singles(h1, h2, 1, [res[1]])
