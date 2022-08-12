@@ -52,11 +52,32 @@ class Hand:
         cards = self.sorted_cards[::-1]
         for i in range(1, 7):
             if cards[i] - cards[i - 1] > 1 and i >= 3:
-                return cards[i]
+                return cards[i - 1]
         return cards[-1]
 
     def get_flush_cards(self):
         count = Counter([math.floor(card / 13) for card in self.cards])
+        suit = count.most_common(1)[0][0]
+        filtered_cards = list(filter(lambda card: math.floor(card / 13) == suit,
+                                     self.sorted_cards))
+        return filtered_cards[:5]
+
+    def get_straight_flush_highest_card(self):
+        count = Counter([math.floor(card / 13) for card in self.cards])
+        suit = count.most_common(1)[0][0]
+        filtered_cards = list(filter(lambda card: math.floor(card / 13) == suit,
+                                     self.sorted_cards))
+        reverse_filtered_cards = filtered_cards[::-1]
+        for i in range(1, len(reverse_filtered_cards)):
+            if reverse_filtered_cards[i] - reverse_filtered_cards[i - 1] > 1 and i >= 3:
+                return reverse_filtered_cards[i - 1]
+        return reverse_filtered_cards[-1]
+
+    def get_full_house_kicker(self):
+        three_most_common = self.count.most_common(3)
+        if three_most_common[2][1] == 1:
+            return three_most_common[1][0]
+        return max(three_most_common[1][0], three_most_common[2][0])
 
     def get_type(self):
         is_straight = self._is_straight()
@@ -121,17 +142,30 @@ def _compare_kicker(h1: Hand, h2: Hand, hand_type: int) -> int:
     elif hand_type == STRENGTH.STRAIGHT:
         c1 = h1.straight_highest_card()
         c2 = h2.straight_highest_card()
-        if c1 > c2:
-            return 1
-        elif c1 < c2:
-            return -1
-        else:
-            return 0
+        return 0 if c1 == c2 else (1 if c1 > c2 else -1)
     elif hand_type == STRENGTH.FLUSH:
-        pass
+        cards1 = h1.get_flush_cards()
+        cards2 = h2.get_flush_cards()
+        for i in range(5):
+            if cards1[i] > cards2[i]:
+                return 1
+            elif cards1[i] < cards2[i]:
+                return -1
+        return 0
+    elif hand_type == STRENGTH.FULL_HOUSE:
+        res = _compare_multiples(h1, h2)
+        if type(res) is int:
+            return res
+        c1 = h1.get_full_house_kicker()
+        c2 = h2.get_full_house_kicker()
+        return 0 if c1 == c2 else (1 if c1 > c2 else -1)
     elif hand_type == STRENGTH.FOUR_OF_A_KIND:
         res = _compare_multiples(h1, h2)
         return res if type(res) is int else _compare_singles(h1, h2, 1, [res[1]])
+    elif hand_type == STRENGTH.STRAIGHT_FLUSH:
+        c1 = h1.get_straight_flush_highest_card()
+        c2 = h2.get_straight_flush_highest_card()
+        return 0 if c1 == c2 else (1 if c1 > c2 else -1)
 
 
 def compare(c1: list[int], c2: list[int]) -> int:
