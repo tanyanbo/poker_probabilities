@@ -14,10 +14,8 @@ def translate():
     return v1, v2, filtered_cards
 
 
-h1, h2, filtered = translate()
-
-
 def get_probability():
+    h1, h2, filtered = translate()
     hand1_count = 0
     hand2_count = 0
     tie_count = 0
