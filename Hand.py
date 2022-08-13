@@ -44,9 +44,24 @@ class Hand:
     def _is_pair(self):
         return self.three_most_common[0][1] == 2
 
-    def _contains_range(self, start: int, end: int) -> bool:
+    def _is_straight_flush(self):
+        flush_cards = [card % 13 for card in self.get_flush_cards()]
+        flush_cards.sort()
+        count = 1
+        for i in range(1, len(flush_cards)):
+            if flush_cards[i] - flush_cards[i - 1] > 1:
+                count = 1
+                if i >= 3:
+                    return 12 in flush_cards and self._contains_range(0, 3, flush_cards)
+            elif flush_cards[i] - flush_cards[i - 1] == 1:
+                count += 1
+            if count == 5:
+                return True
+        return 12 in flush_cards and self._contains_range(0, 3, flush_cards)
+
+    def _contains_range(self, start: int, end: int, cards=None) -> bool:
         for i in range(start, end + 1):
-            if i not in self.sorted_cards:
+            if i not in self.sorted_cards if not cards else cards:
                 return False
         return True
 
@@ -80,7 +95,7 @@ class Hand:
     def get_type(self):
         is_straight = self._is_straight()
         is_flush = self._is_flush()
-        if is_straight and is_flush:
+        if is_straight and is_flush and self._is_straight_flush():
             if self.get_straight_flush_highest_card() == 12:
                 return STRENGTH.ROYAL_FLUSH
             else:
@@ -146,15 +161,14 @@ def _compare_kicker(h1: Hand, h2: Hand, hand_type: int) -> int:
                 return 1
             elif t1[i] < t2[i]:
                 return -1
-            else:
-                remaining1 = [card for card in h1.sorted_cards if card not in t1[:2]]
-                remaining2 = [card for card in h2.sorted_cards if card not in t2[:2]]
-                if remaining1[0] > remaining2[0]:
-                    return 1
-                elif remaining1[0] < remaining2[0]:
-                    return -1
-                else:
-                    return 0
+        remaining1 = [card for card in h1.sorted_cards if card not in t1[:2]]
+        remaining2 = [card for card in h2.sorted_cards if card not in t2[:2]]
+        if remaining1[0] > remaining2[0]:
+            return 1
+        elif remaining1[0] < remaining2[0]:
+            return -1
+        else:
+            return 0
     elif hand_type == STRENGTH.TRIPS:
         res = _compare_multiples(h1, h2)
         return res if type(res) is int else _compare_singles(h1, h2, 2, [res[1]])
